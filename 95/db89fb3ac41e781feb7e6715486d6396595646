@@ -1,0 +1,131 @@
+src/ui/styles.css
+  s_45960f6aec9934::t_d832af08251ab3 1-1156
+eslint.config.js
+  s_45960f6aec9934::t_32e4cb1819ed3e 8
+  s_45960f6aec9934::t_3f36486de372f1 1-7,9-10
+src/ui/Icon.tsx
+  s_45960f6aec9934::t_d832af08251ab3 1-76
+  s_45960f6aec9934::t_bffa27ac46ffe6 77
+src/ui/demo.ts
+  s_45960f6aec9934::t_d832af08251ab3 5-54
+  s_45960f6aec9934::t_347bf1f3fcfec5 1-4,55-57
+entrypoints/capture.content.ts
+  s_45960f6aec9934::t_0df6b1cac82d6f 8-9
+  s_45960f6aec9934::t_4263c7d6de6b40 5-7
+  s_45960f6aec9934::t_6b0302bb5a0c5c 10-12
+tests/e2e/dashboard.spec.ts
+  s_45960f6aec9934::t_0efba31ac58203 24,42-43,48,61,74
+  s_45960f6aec9934::t_4e30788a6f25de 44-47,75
+  s_45960f6aec9934::t_7f7c32a1a6a1d7 21-23
+  s_45960f6aec9934::t_7995eb5a5341fd 25-27,39-41
+  s_45960f6aec9934::t_250cdcfe7ea1ed 49-51,58-60
+  s_45960f6aec9934::t_f0127545b866f5 62-64,71-73
+  s_45960f6aec9934::t_2b61b9f34e63ba 76-78
+tests/tracking-runtime.test.ts
+  s_45960f6aec9934::t_0df6b1cac82d6f 2-29,55-86,109,141
+  s_45960f6aec9934::t_2d11b756ffaadd 31,47-54,90,98,102,107-108,113,116-118,120,122,125-127,132,135-136,139-140,143-209,212-216,220-221,225
+  s_45960f6aec9934::t_4f1d37c4e51b03 1,30,32-46,87-89,91-97,99-101,103-106,110-112,114-115,119,121,123-124,128-131,133-134,137-138,142,210-211,217-219,222-224,226
+docs/design.md
+  s_45960f6aec9934::t_0efba31ac58203 16-31
+  s_45960f6aec9934::t_8acdbddd54ad1e 13-15
+entrypoints/background.ts
+  s_45960f6aec9934::t_0df6b1cac82d6f 65-68,74,120,145,188,200,232
+  s_45960f6aec9934::t_2d11b756ffaadd 82-104
+  s_45960f6aec9934::t_4295f07a48c340 1-64,69-73,75-81,105-119,121-144,146-187,189-199,201-231,233-253
+docs/design/prompt.md
+  s_45960f6aec9934::t_c0daf1f9fc876b 1-9
+src/ui/Dashboard.tsx
+  s_45960f6aec9934::t_d832af08251ab3 28-426
+  s_45960f6aec9934::t_905e390a379e8c 1-27,427
+package.json
+  s_45960f6aec9934::t_32e4cb1819ed3e 12-13
+  s_45960f6aec9934::t_76c5374d5f0526 1-11,14-47
+tests/extraction-runtime.test.ts
+  s_45960f6aec9934::t_0df6b1cac82d6f 24-28,62,94
+  s_45960f6aec9934::t_fa9d30865a155a 21-23
+  s_45960f6aec9934::t_59941996d9979b 29-31,59-61
+  s_45960f6aec9934::t_09c38f4783230b 63-65,91-93
+  s_45960f6aec9934::t_43dfd07c3c1d77 95
+src/ui/api.ts
+  s_45960f6aec9934::t_d832af08251ab3 4-123
+  s_45960f6aec9934::t_a1f84c1f2e8909 1-3
+src/ui/main.tsx
+  s_45960f6aec9934::t_d832af08251ab3 6-10
+  s_45960f6aec9934::t_c6467608a1fd84 1-5
+src/ui/PageDetails.tsx
+  s_45960f6aec9934::t_d832af08251ab3 7-116
+  s_45960f6aec9934::t_beb9207a73be61 1-6,117
+src/ui/SettingsPage.tsx
+  s_45960f6aec9934::t_d832af08251ab3 5-220
+  s_45960f6aec9934::t_493611b15bdfdf 1-4,221
+scripts/verify-manifest.mjs
+  s_45960f6aec9934::t_32e4cb1819ed3e 1-2,4-12
+  s_45960f6aec9934::t_6fdc6931c4625d 3
+src/ui/App.tsx
+  s_45960f6aec9934::t_d832af08251ab3 3-257
+  s_45960f6aec9934::t_1900a5f0cbef3c 1-2,258
+README.md
+  s_45960f6aec9934::t_b2687ee58896c2 25-26
+  s_45960f6aec9934::t_4be1b57c2c2537 22-24
+  s_45960f6aec9934::t_9b3e46b59572d8 27-29
+  s_852ebd412b1084::t_71ee3d17ca457d 1-21,30-98
+tests/e2e/extension.spec.ts
+  s_45960f6aec9934::t_c9b4cac3e7e8b9 13,20,27-32
+  s_45960f6aec9934::t_6fdc6931c4625d 38-40
+  s_45960f6aec9934::t_5119b3c06b88d2 10-12
+  s_45960f6aec9934::t_b4cca8be21dad5 14-19
+  s_45960f6aec9934::t_6a05400c3ee004 21-26
+  s_45960f6aec9934::t_68f4656e2d1543 33-37
+  s_45960f6aec9934::t_cb0a67ec44aef3 41-43
+src/ui/ReportEditor.tsx
+  s_45960f6aec9934::t_d832af08251ab3 16-128
+  s_45960f6aec9934::t_490725cd1641ab 1-15,129
+.github/workflows/ci.yml
+  s_45960f6aec9934::t_37eb5d5eb7bde9 1-15
+package-lock.json
+  s_45960f6aec9934::t_766a40f56ee6d9 1-5495
+src/analytics/analyze.ts
+  s_45960f6aec9934::t_0e7c047769de0f 1-199
+src/data/db.ts
+  s_45960f6aec9934::t_4f775b6c70ce5e 1-106
+src/extraction/extract.ts
+  s_45960f6aec9934::t_d8ec8535f540e3 1-101
+src/extraction/protocol.ts
+  s_45960f6aec9934::t_35195f1b74c905 1-3
+src/platform/settings.ts
+  s_45960f6aec9934::t_dea9ebb7da6569 1-42
+src/tracking/engine.ts
+  s_45960f6aec9934::t_a65b33c018c391 1-82
+src/tracking/url.ts
+  s_45960f6aec9934::t_4c00439f4edc8e 1-41
+tests/data.test.ts
+  s_45960f6aec9934::t_7ee5fa7f20da9c 1-114
+tests/extraction.test.ts
+  s_45960f6aec9934::t_9c9f99340a58f8 1-75
+tests/reports.test.ts
+  s_45960f6aec9934::t_ec1553dd3e259f 1-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "95db89fb3ac41e781feb7e6715486d6396595646",
+  "prompts": {},
+  "sessions": {
+    "s_45960f6aec9934": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a14e80-cf75-78b0-a73f-351ee544293f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Altria1979 <58761705+Altria1979@users.noreply.github.com>"
+    },
+    "s_852ebd412b1084": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a14f2c-68a5-7220-ac9a-c1e0ad89e17e",
+        "model": "unknown"
+      },
+      "human_author": "Altria1979 <58761705+Altria1979@users.noreply.github.com>"
+    }
+  }
+}
