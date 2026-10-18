@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, type Settings } from '../shared/types';
+import { DEFAULT_SETTINGS, hasTrackingConsent, type Settings } from '../shared/types';
 import { normalizeExcludedHost } from '../tracking/url';
 
 export const SETTINGS_KEY = 'settings';
@@ -24,8 +24,12 @@ export function validateSettings(value: Partial<Settings>): Settings {
     if (!normalized) throw new Error(`网站格式无效：${host.slice(0, 100)}`);
     return normalized;
   });
+  const trackingConsent = hasTrackingConsent({ trackingConsent: value.trackingConsent ?? null })
+    ? { version: value.trackingConsent!.version, acceptedAt: value.trackingConsent!.acceptedAt }
+    : null;
   return {
-    trackingEnabled: value.trackingEnabled ?? DEFAULT_SETTINGS.trackingEnabled,
+    trackingEnabled: trackingConsent !== null && (value.trackingEnabled ?? DEFAULT_SETTINGS.trackingEnabled),
+    trackingConsent,
     idleSeconds, retentionDays, excludedHosts: [...new Set(excludedHosts)],
   };
 }

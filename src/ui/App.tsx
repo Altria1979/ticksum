@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { generateReport, REPORT_TEMPLATES } from '../reports/generate';
 import {
   DEFAULT_SETTINGS,
+  hasTrackingConsent,
+  TRACKING_DISCLOSURE_VERSION,
   type AnalyticsResult,
   type ReportTemplate,
   type SavedReport,
@@ -13,11 +15,15 @@ import { Dashboard } from './Dashboard';
 import { Icon } from './Icon';
 import { ReportEditor } from './ReportEditor';
 import { SettingsPage } from './SettingsPage';
+import { FirstRunNotice } from './FirstRunNotice';
 
 type View = 'overview' | 'reports' | 'settings';
 export function App() {
   const [view, setView] = useState<View>('overview');
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [enabling, setEnabling] = useState(false);
+  const [deferredTracking, setDeferredTracking] = useState(false);
   const [status, setStatus] = useState<TrackerStatus>();
   const [template, setTemplate] = useState<ReportTemplate>('review');
   const [draft, setDraft] = useState<SavedReport | null>(null);
@@ -36,7 +42,7 @@ export function App() {
   useEffect(() => {
     api
       .settings()
-      .then(setSettings)
+      .then((loaded) => { setSettings(loaded); setSettingsLoaded(true); })
       .catch((error) => notify(errorMessage(error), true));
     api
       .status()
@@ -86,6 +92,31 @@ export function App() {
     } catch (error) {
       notify(errorMessage(error), true);
     }
+  }
+  async function enableTracking() {
+    setEnabling(true);
+    setToast(null);
+    try {
+      const next = await api.updateSettings({
+        trackingEnabled: true,
+        trackingConsent: { version: TRACKING_DISCLOSURE_VERSION, acceptedAt: Date.now() },
+      });
+      setSettings(next);
+      notify('自动记录已开启，可随时在设置中暂停。');
+    } catch (error) {
+      notify(errorMessage(error), true);
+    } finally {
+      setEnabling(false);
+    }
+  }
+  const needsConsent = isExtension && !hasTrackingConsent(settings);
+  if (needsConsent && !deferredTracking) {
+    return <FirstRunNotice
+      onEnable={() => void enableTracking()}
+      onDefer={() => setDeferredTracking(true)}
+      busy={enabling || !settingsLoaded}
+      error={toast?.error ? toast.message : undefined}
+    />;
   }
   const editor = (
     <ReportEditor
@@ -138,6 +169,12 @@ export function App() {
         </div>
       </aside>
       <main>
+        {needsConsent && (
+          <div className="first-run-deferred" role="status">
+            <span>自动记录尚未启用。你仍可查看、导出或删除已有数据。</span>
+            <button onClick={() => setDeferredTracking(false)}>查看说明并启用</button>
+          </div>
+        )}
         {!isExtension && (
           <div className="preview-banner">
             {isDemo
@@ -228,6 +265,7 @@ export function App() {
         {view === 'settings' && (
           <SettingsPage
             settings={settings}
+            onRequestEnable={() => setDeferredTracking(false)}
             updateSettings={setSettings}
             initialSite={initialSite}
             onCleared={() => {

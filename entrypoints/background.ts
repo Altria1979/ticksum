@@ -3,7 +3,7 @@ import { clearAllData, db, pruneData, saveSnapshot } from '../src/data/db';
 import { MAX_CONTENT_LENGTH, MAX_TITLE_LENGTH, countWords, hashContent } from '../src/extraction/extract';
 import { getSettings, SETTINGS_KEY } from '../src/platform/settings';
 import type { ExtensionMessage, ExtensionResponse } from '../src/shared/messages';
-import type { Activity, Settings, Snapshot } from '../src/shared/types';
+import { hasTrackingConsent, type Activity, type Settings, type Snapshot } from '../src/shared/types';
 import { advanceTracker, initialTrackingState, type TrackingObservation, type TrackingState, type TrackingTransition } from '../src/tracking/engine';
 import { getPageIdentity, hostPermissionPattern, isExcludedHost } from '../src/tracking/url';
 
@@ -60,6 +60,10 @@ export default defineBackground(() => {
 
   async function reconcile(overrides: Partial<Pick<TrackingObservation, 'idle' | 'focused'>> = {}) {
     const settings = await getSettings();
+    if (!hasTrackingConsent(settings)) {
+      await commit({ state: { status: { tracking: false, reason: 'paused' } } });
+      return;
+    }
     const previousSegmentId = state.active?.activity.id;
     await commit(advanceTracker(state, await observe(settings, overrides), () => crypto.randomUUID()));
     if (lastError) {
@@ -234,15 +238,20 @@ export default defineBackground(() => {
   chrome.action.onClicked.addListener(() => {
     void chrome.tabs.create({ url: chrome.runtime.getURL('/dashboard.html') });
   });
+  chrome.runtime.onInstalled.addListener((details) => {
+    if (details.reason === 'install') {
+      void chrome.tabs.create({ url: chrome.runtime.getURL('/dashboard.html') });
+    }
+  });
 
   void serial(async () => {
     await chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
     await chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
-    const stored = await chrome.storage.session.get([STATE_KEY, JOURNAL_KEY, ERROR_KEY]);
-    state = (stored[STATE_KEY] as TrackingState | undefined) ?? initialTrackingState();
-    lastError = typeof stored[ERROR_KEY] === 'string' ? stored[ERROR_KEY] : undefined;
-    if (stored[JOURNAL_KEY]) await applyJournal(stored[JOURNAL_KEY] as Journal);
     const settings = await getSettings();
+    const stored = await chrome.storage.session.get([STATE_KEY, JOURNAL_KEY, ERROR_KEY]);
+    state = hasTrackingConsent(settings) ? (stored[STATE_KEY] as TrackingState | undefined) ?? initialTrackingState() : initialTrackingState();
+    lastError = typeof stored[ERROR_KEY] === 'string' ? stored[ERROR_KEY] : undefined;
+    if (hasTrackingConsent(settings) && stored[JOURNAL_KEY]) await applyJournal(stored[JOURNAL_KEY] as Journal);
     chrome.idle.setDetectionInterval(settings.idleSeconds);
     await chrome.alarms.create(CHECKPOINT_ALARM, { periodInMinutes: 0.5 });
     await chrome.alarms.create(PRUNE_ALARM, { periodInMinutes: 60 });

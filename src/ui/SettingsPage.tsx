@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
-import type { Settings } from '../shared/types';
+import { hasTrackingConsent, type Settings } from '../shared/types';
 import { api, errorMessage, isExtension } from './api';
 
 export function SettingsPage({
   settings,
+  onRequestEnable,
   updateSettings,
   initialSite,
   onCleared,
   notify,
 }: {
   settings: Settings;
+  onRequestEnable: () => void;
   updateSettings: (settings: Settings) => void;
   initialSite: string;
   onCleared: () => void;
@@ -108,10 +110,14 @@ export function SettingsPage({
             </span>
             <input
               type="checkbox"
+              disabled={isExtension && !hasTrackingConsent(settings)}
               checked={draft.trackingEnabled}
               onChange={(event) => setDraft({ ...draft, trackingEnabled: event.target.checked })}
             />
           </label>
+          {isExtension && !hasTrackingConsent(settings) && (
+            <p className="small muted">启用前请阅读数据用途说明。 <button type="button" onClick={onRequestEnable}>查看说明</button></p>
+          )}
           <div className="form-grid">
             <label className="field">
               闲置暂停阈值（秒）

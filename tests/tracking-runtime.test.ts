@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Activity, Snapshot, TrackerStatus } from '../src/shared/types';
+import { DEFAULT_SETTINGS, TRACKING_DISCLOSURE_VERSION, type Activity, type Settings, type Snapshot, type TrackerStatus } from '../src/shared/types';
+import { saveSettings } from '../src/platform/settings';
 
 const database = vi.hoisted(() => ({
   activities: new Map<string, Activity>(), snapshots: [] as Snapshot[],
@@ -21,8 +22,10 @@ function event<T extends (...args: never[]) => unknown>() {
 
 type Listener = (message: unknown, sender: chrome.runtime.MessageSender, respond: (response: unknown) => void) => boolean;
 
-function fakeChrome(session: Record<string, unknown> = {}) {
-  const local: Record<string, unknown> = {};
+const acceptedSettings: Settings = { ...DEFAULT_SETTINGS, trackingEnabled: true, trackingConsent: { version: TRACKING_DISCLOSURE_VERSION, acceptedAt: 1000 } };
+
+function fakeChrome(session: Record<string, unknown> = {}, settings: Partial<Settings> = acceptedSettings) {
+  const local: Record<string, unknown> = { settings };
   const area = (values: Record<string, unknown>) => ({
     get: vi.fn(async () => ({ ...values })),
     set: vi.fn(async (changes: Record<string, unknown>) => { Object.assign(values, changes); }),
@@ -35,9 +38,9 @@ function fakeChrome(session: Record<string, unknown> = {}) {
   };
   const messages = event<Listener>();
   return {
-    session, tab, messages,
+    session, local, tab, messages,
     api: {
-      runtime: { id: 'test', getURL: (path: string) => `chrome-extension://test/${path.replace(/^\//, '')}`, onMessage: messages },
+      runtime: { id: 'test', getURL: (path: string) => `chrome-extension://test/${path.replace(/^\//, '')}`, onMessage: messages, onInstalled: event() },
       storage: { local: area(local), session: area(session), onChanged: event() },
       windows: { WINDOW_ID_NONE: -1, getLastFocused: vi.fn(async () => ({ id: 1, focused: true, type: 'normal' })), get: vi.fn(async () => ({ focused: true, type: 'normal' })), onFocusChanged: event(), onRemoved: event() },
       tabs: { query: vi.fn(async () => [tab]), get: vi.fn(async () => tab), sendMessage: vi.fn(async (_id: number, _message: { type: string }) => undefined), create: vi.fn(async () => undefined), onActivated: event(), onUpdated: event(), onRemoved: event() },
@@ -69,6 +72,63 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('background persistence and trust boundaries', () => {
+  it.each([DEFAULT_SETTINGS, { trackingEnabled: true }])('does not collect before acknowledgement, including legacy enabled settings', async (settings) => {
+    const fake = fakeChrome({}, settings);
+    fake.api.permissions.getAll.mockResolvedValue({ origins: ['https://example.com/*'] });
+    fake.api.permissions.contains.mockResolvedValue(true);
+    vi.stubGlobal('chrome', fake.api);
+    background.main();
+    expect((await send(fake, { type: 'GET_STATUS' })).status).toMatchObject({ tracking: false, reason: 'paused' });
+    vi.setSystemTime(30_000);
+    await send(fake, { type: 'REFRESH_TRACKING' });
+    expect(database.put).not.toHaveBeenCalled();
+    expect(fake.api.windows.getLastFocused).not.toHaveBeenCalled();
+    expect(fake.api.scripting.registerContentScripts).not.toHaveBeenCalled();
+    expect((await send(fake, { type: 'SAVE_SNAPSHOT', snapshot: {
+      url: contentSender.url, text: 'a'.repeat(80), headings: [], method: 'adapter', coverage: 'partial',
+    } }, contentSender)).ok).toBe(false);
+    expect(database.save).not.toHaveBeenCalled();
+  });
+
+  it('acknowledgement starts automatic timing while a later pause survives a worker restart', async () => {
+    const fake = fakeChrome({}, DEFAULT_SETTINGS);
+    vi.stubGlobal('chrome', fake.api);
+    background.main();
+    await send(fake, { type: 'GET_STATUS' });
+    await saveSettings({ trackingEnabled: true });
+    expect((await send(fake, { type: 'GET_STATUS' })).status?.tracking).toBe(false);
+    await saveSettings({ trackingEnabled: true, trackingConsent: { version: TRACKING_DISCLOSURE_VERSION, acceptedAt: Date.now() } });
+    expect((await send(fake, { type: 'REFRESH_TRACKING' })).status?.tracking).toBe(true);
+    vi.setSystemTime(20_000);
+    await send(fake, { type: 'GET_STATUS' });
+    expect(database.activities.size).toBe(1);
+    const paused = await saveSettings({ trackingEnabled: false });
+    await send(fake, { type: 'REFRESH_TRACKING' });
+    const restored = fakeChrome(fake.session, paused);
+    vi.stubGlobal('chrome', restored.api);
+    background.main();
+    vi.setSystemTime(40_000);
+    expect((await send(restored, { type: 'GET_STATUS' })).status?.tracking).toBe(false);
+    expect([...database.activities.values()][0]?.endedAt).toBe(20_000);
+    expect(paused.trackingConsent).toEqual({ version: TRACKING_DISCLOSURE_VERSION, acceptedAt: 10_000 });
+  });
+
+  it('keeps existing rows but does not resume or replay pending collection without current consent', async () => {
+    const saved: Activity = { id: 'saved', pageKey: 'https://example.com/guide', url: 'https://example.com/guide', hostname: 'example.com', title: 'Existing record', startedAt: 1000, endedAt: 4000 };
+    database.activities.set(saved.id, saved);
+    const pending = { ...saved, id: 'pending', startedAt: 5000, endedAt: 8000 };
+    const priorState = { active: { activity: pending, tabId: 1, checkpointAt: 8000 }, status: { tracking: true, reason: 'active' } };
+    const fake = fakeChrome({ trackingState: priorState, trackingJournal: { activity: pending, state: priorState } }, { trackingEnabled: true });
+    vi.stubGlobal('chrome', fake.api);
+    background.main();
+    expect((await send(fake, { type: 'GET_STATUS' })).status).toMatchObject({ tracking: false, reason: 'paused' });
+    expect(database.put).not.toHaveBeenCalled();
+    expect(database.clear).not.toHaveBeenCalled();
+    expect([...database.activities.values()]).toEqual([saved]);
+    expect(fake.session.trackingJournal).toBeNull();
+    expect(fake.session.trackingState).not.toHaveProperty('active');
+  });
+
   it('clears a transient tracker error once reconciliation succeeds again', async () => {
     const fake = fakeChrome();
     vi.stubGlobal('chrome', fake.api);

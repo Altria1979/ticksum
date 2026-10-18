@@ -9,4 +9,11 @@ assert.equal((manifest.host_permissions ?? []).length, 0, 'Site access must rema
 assert.equal((manifest.content_scripts ?? []).length, 0, 'Capture scripts must only be dynamically registered after site authorization.');
 assert.deepEqual([...manifest.optional_host_permissions].sort(), ['http://*/*', 'https://*/*']);
 assert.ok(!manifest.permissions.includes('history'), 'TickSum does not require past browsing history.');
-process.stdout.write('Manifest verified: MV3, optional site access, no static capture scripts.\n');
+for (const size of [16, 32, 48, 128]) {
+  assert.equal(manifest.icons?.[size], `icon/${size}.png`, 'Packaged extension must include its declared PNG icons.');
+  const icon = await readFile(new URL(`../.output/chrome-mv3/${manifest.icons[size]}`, import.meta.url));
+  assert.equal(icon.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', 'Icon must be a PNG.');
+  assert.equal(icon.readUInt32BE(16), size, 'Icon width must match the manifest.');
+  assert.equal(icon.readUInt32BE(20), size, 'Icon height must match the manifest.');
+}
+process.stdout.write('Manifest verified: MV3, optional site access, no static capture scripts, PNG icons.\n');

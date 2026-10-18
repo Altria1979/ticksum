@@ -27,14 +27,11 @@ async function launch(withContentPermission: boolean): Promise<{ context: Browse
   // The serviceworker event can precede Chrome API installation and bootstrap.
   await expect.poll(() => worker.evaluate(() => typeof chrome !== 'undefined' && typeof chrome.permissions?.getAll === 'function')).toBe(true);
   await expect.poll(() => worker.evaluate(async () => Boolean((await chrome.storage.session.get('trackingState')).trackingState))).toBe(true);
-  if (withContentPermission) {
-    await expect.poll(() => worker.evaluate(async () => (await chrome.scripting.getRegisteredContentScripts()).length)).toBe(1);
-  }
   const id = new URL(worker.url()).host;
   return { context, worker, id, root };
 }
 
-test('real extension automatically records without capturing unapproved sites', async () => {
+test('real extension requires first-use acknowledgement, then automatically records without unapproved content', async () => {
   const { context, worker, id, root } = await launch(false);
   try {
     expect((await worker.evaluate(() => chrome.permissions.getAll())).origins ?? []).toEqual([]);
@@ -43,6 +40,31 @@ test('real extension automatically records without capturing unapproved sites', 
     await browsing.waitForTimeout(1500); // A measured interval, not a page-readiness wait.
     const dashboard = await context.newPage();
     await dashboard.goto(`chrome-extension://${id}/dashboard.html`);
+    await expect(dashboard.getByRole('heading', { name: /让时间留下记录/ })).toBeVisible();
+    await expect(dashboard.getByRole('link', { name: '隐私政策' })).toHaveAttribute('href', 'https://github.com/Altria1979/ticksum/blob/main/docs/privacy-policy.md');
+    expect(await worker.evaluate(async () => {
+      const request = indexedDB.open('ticksum');
+      return await new Promise<number>(resolve => { request.onsuccess = () => { const db = request.result; const count = db.transaction('activities').objectStore('activities').count(); count.onsuccess = () => { db.close(); resolve(count.result); }; }; });
+    })).toBe(0);
+    await expect(dashboard.getByRole('navigation')).toHaveCount(0);
+    await mkdir(join(tmpdir(), 'ticksum-qa'), { recursive: true });
+    await dashboard.screenshot({ path: join(tmpdir(), 'ticksum-qa', 'first-run.png'), fullPage: true });
+    await dashboard.setViewportSize({ width: 390, height: 844 });
+    await dashboard.screenshot({ path: join(tmpdir(), 'ticksum-qa', 'first-run-mobile.png'), fullPage: true });
+    await dashboard.setViewportSize({ width: 1440, height: 1000 });
+    await dashboard.getByRole('button', { name: '暂不开启，查看已有数据' }).click();
+    await expect(dashboard.getByRole('navigation')).toBeVisible();
+    await dashboard.getByRole('navigation').getByRole('button', { name: '设置' }).click();
+    await expect(dashboard.getByLabel('自动记录浏览时长')).toBeDisabled();
+    await expect(dashboard.getByRole('button', { name: '删除全部本地数据' })).toBeVisible();
+    await dashboard.getByRole('button', { name: '查看说明并启用' }).click();
+    await dashboard.getByRole('button', { name: '启用自动记录' }).click();
+    await expect(dashboard.getByRole('navigation')).toBeVisible();
+    await browsing.bringToFront();
+    await browsing.waitForTimeout(1500);
+    await dashboard.bringToFront();
+    await dashboard.reload();
+    await expect(dashboard.getByRole('button', { name: '启用自动记录' })).toHaveCount(0);
     await expect(dashboard.getByRole('button', { name: 'TickSum 测试文章', exact: true })).toBeVisible();
     await expect(dashboard.getByRole('button', { name: '仅记录', exact: true })).toBeVisible();
     await expect(dashboard.getByRole('alert')).toHaveCount(0);
@@ -59,6 +81,10 @@ test('real extension automatically records without capturing unapproved sites', 
 test('authorized extraction, SPA navigation, privacy cleaning and pause work in real Chromium', async () => {
   const { context, worker, id, root } = await launch(true);
   try {
+    const welcome = await context.newPage();
+    await welcome.goto(`chrome-extension://${id}/dashboard.html`);
+    await welcome.getByRole('button', { name: '启用自动记录' }).click();
+    await expect.poll(() => worker.evaluate(async () => (await chrome.scripting.getRegisteredContentScripts()).length)).toBe(1);
     const browsing = await context.newPage();
     await browsing.goto(`${origin}/article`);
     await expect.poll(() => worker.evaluate(async () => {
@@ -81,6 +107,9 @@ test('authorized extraction, SPA navigation, privacy cleaning and pause work in 
     await dashboard.getByLabel('自动记录浏览时长').uncheck();
     await dashboard.getByRole('button', { name: '保存设置', exact: true }).click();
     await expect(dashboard.getByRole('status')).toContainText('设置已保存');
+    await dashboard.reload();
+    await dashboard.getByRole('navigation').getByRole('button', { name: '设置' }).click();
+    await expect(dashboard.getByLabel('自动记录浏览时长')).not.toBeChecked();
     await browsing.bringToFront(); await browsing.goto(`${origin}/paused`); await browsing.waitForTimeout(1600);
     await dashboard.bringToFront();
     await dashboard.getByRole('navigation').getByRole('button', { name: '浏览概览', exact: true }).click();

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS } from '../src/shared/types';
+import { DEFAULT_SETTINGS, TRACKING_DISCLOSURE_VERSION } from '../src/shared/types';
 import { advanceTracker, initialTrackingState, MAX_CHECKPOINT_GAP_MS, observationStatus, type TrackingObservation } from '../src/tracking/engine';
 import { getPageIdentity, hostPermissionPattern, isExcludedHost, normalizeExcludedHost } from '../src/tracking/url';
 import { validateSettings } from '../src/platform/settings';
 
+const acceptedSettings = { ...DEFAULT_SETTINGS, trackingEnabled: true, trackingConsent: { version: TRACKING_DISCLOSURE_VERSION, acceptedAt: 1000 } };
+
 const observation = (now: number, partial: Partial<TrackingObservation> = {}): TrackingObservation => ({
-  now, focused: true, idle: false, settings: DEFAULT_SETTINGS,
+  now, focused: true, idle: false, settings: acceptedSettings,
   tab: { id: 1, url: 'https://example.com/guide', title: 'Guide' }, ...partial,
 });
 
@@ -43,7 +45,7 @@ describe('foreground tracking transitions', () => {
     ['unfocused', { focused: false }],
     ['idle', { idle: true }],
     ['paused', { settings: { ...DEFAULT_SETTINGS, trackingEnabled: false } }],
-    ['excluded', { settings: { ...DEFAULT_SETTINGS, excludedHosts: ['example.com'] } }],
+    ['excluded', { settings: { ...acceptedSettings, excludedHosts: ['example.com'] } }],
     ['unsupported', { tab: { id: 1, url: 'chrome://settings/' } }],
     ['unsupported', { tab: { id: 1, url: 'https://example.com', incognito: true } }],
   ] as const)('stops active timing for %s', (reason, partial) => {

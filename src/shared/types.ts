@@ -40,12 +40,19 @@ export interface SavedReport {
 
 export interface Settings {
   trackingEnabled: boolean;
+  trackingConsent: { version: number; acceptedAt: number } | null;
   idleSeconds: number;
   excludedHosts: string[];
   retentionDays: number;
 }
+export const TRACKING_DISCLOSURE_VERSION = 1;
+export function hasTrackingConsent(settings: Pick<Settings, 'trackingConsent'>): boolean {
+  const consent = settings.trackingConsent;
+  return consent?.version === TRACKING_DISCLOSURE_VERSION
+    && Number.isFinite(consent.acceptedAt) && consent.acceptedAt > 0;
+}
 export const DEFAULT_SETTINGS: Settings = {
-  trackingEnabled: true, idleSeconds: 300, excludedHosts: [], retentionDays: 30,
+  trackingEnabled: false, trackingConsent: null, idleSeconds: 300, excludedHosts: [], retentionDays: 30,
 };
 export interface TrackerStatus {
   tracking: boolean;
